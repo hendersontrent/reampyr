@@ -9,9 +9,9 @@
 #%%
 import tkinter as tk
 from tkinter import *
-from tkinter.ttk import * 
-from argparse import ArgumentParser
+from tkinter.ttk import *
 import numpy as np
+import pandas as pd
 import os
 import soundfile as sf
 import matplotlib.pyplot as plt
@@ -39,22 +39,29 @@ three_palette = ['#619196', '#B2D9EA', '#F4DCD6']
 
 #----------------READ IN DATA--------------------
 
+# Read in raw DI and amp file
+
+di_data, samplerate = sf.read("/Users/trenthenderson/Documents/Python/reampyr/data/Dry Guitar.wav")
+#amp_data, samplerate = sf.read("filehere.wav")
+
+#%%
+
+#----------------DATA VISUALISATION-----------------
+
+# Convert np array to pd dataframe
+
+di_data_pd = pd.DataFrame({'Column1': di_data[1:500000, 0], 'Column2': di_data[1:500000, 1]})
+
 # Plotter for raw data
 
-sns.lineplot(x = "x", y = "y",
-             hue = "group", style = "event",
-             data = data, palette = two_palette)
+sns.lineplot(x = "Column1", y = "Column2",
+             data = di_data_pd, palette = two_palette)
 
 # Plotter for trained neural network data
 
-sns.lineplot(x = "x", y = "y",
-             hue = "group", style = "event",
-             data = data, palette = three_palette)
-
-# Read in raw DI and amp file
-
-di_data, samplerate = sf.read("filehere.wav")
-amp_data, samplerate = sf.read("filehere.wav")
+#sns.lineplot(x = "x", y = "y",
+#             hue = "group", style = "event",
+#             data = data, palette = three_palette)
 
 #%%
 
@@ -124,14 +131,6 @@ main_title = tk.Label(root, text = "ReamPyr" ,
                       fg = 'white', bg = "#B2D9EA",
                       highlightthickness = 0)
 main_title.grid(row = 1, column = 0)
-
-# Add input panel label
-
-inputs_title = tk.Label(root, text = "Inputs",
-                        font = ('Arial', 42, 'bold'),
-                        fg = '#619196', bg = "#B2D9EA",
-                        highlightthickness = 0)
-inputs_title.grid(row = 10, column = 0)
 
 # Add inputs
 
