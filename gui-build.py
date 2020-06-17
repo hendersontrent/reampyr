@@ -8,10 +8,12 @@
 
 #%%
 import tkinter as tk
+from tkinter import *
 from tkinter.ttk import * 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import seaborn as sns; sns.set()
 
 from subprocess import check_output
@@ -23,6 +25,28 @@ from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
+
+#%%
+
+#----------------DEFINE PLOTTING FUNCTIONS-----------
+
+
+
+#%%
+
+#----------------DEFINE ML ALGORITHMS----------------
+
+#--------------
+# LSTM CNN
+#--------------
+
+
+
+#--------------
+# FFT
+#--------------
+
+
 
 #%%
 
@@ -46,6 +70,13 @@ main_title = tk.Text(root, height = 20, width = 40,
                          highlightthickness = 0)
 main_title.insert(tk.END,'ReamPyr')
 main_title.pack(side = tk.LEFT)
+
+# Add slider for lookback use in LSTM algorithm
+
+slider = tk.Scale(root, from_ = 0, to = 100, resolution = 1, 
+                  foreground = 'white', background = "#84BC48",
+                  highlightthickness = 0)
+slider.pack(side = tk.LEFT)
 
 # Run application
 
