@@ -1,10 +1,14 @@
-#--------------------------------
-#
-#--------------------------------
+#--------------------------------------
+# This script sets out to produce a GUI
+# application that loads, visualises
+# and transforms a raw DI guitar signal
+# into that of a given amplifier using
+# machine learning.
+#--------------------------------------
 
-#--------------------------------
-#
-#--------------------------------
+#--------------------------------------
+# Author: Trent Henderson, 17 June 2020
+#--------------------------------------
 
 #%%
 import tkinter as tk
@@ -13,7 +17,7 @@ from tkinter.ttk import *
 import numpy as np
 import pandas as pd
 import os
-import soundfile as sf
+from scipy.io import wavfile
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import seaborn as sns; sns.set()
@@ -30,38 +34,24 @@ from sklearn.metrics import mean_squared_error
 
 #%%
 
-#----------------DEFINE COLOUR PALETTE--------------------
-
-two_palette = ['#619196', '#B2D9EA']
-three_palette = ['#619196', '#B2D9EA', '#F4DCD6']
-
-#%%
-
 #----------------READ IN DATA--------------------
 
-# Read in raw DI and amp file
+# Read in raw DI and amp file and plot it
 
-di_data, samplerate = sf.read("/Users/trenthenderson/Documents/Python/reampyr/data/Dry Guitar.wav")
-#amp_data, samplerate = sf.read("filehere.wav")
-
-#%%
-
-#----------------DATA VISUALISATION-----------------
-
-# Convert np array to pd dataframe
-
-di_data_pd = pd.DataFrame({'Column1': di_data[1:500000, 0], 'Column2': di_data[1:500000, 1]})
-
-# Plotter for raw data
-
-sns.lineplot(x = "Column1", y = "Column2",
-             data = di_data_pd, palette = two_palette)
-
-# Plotter for trained neural network data
-
-#sns.lineplot(x = "x", y = "y",
-#             hue = "group", style = "event",
-#             data = data, palette = three_palette)
+def audio_plotter():
+    samplerate, data = wavfile.read("/Users/trenthenderson/Documents/Python/reampyr/data/Dry Guitar.wav")
+    times = np.arange(len(data))/float(samplerate)
+    
+    # Plot it
+    
+    f, ax = plt.subplots(figsize=(7, 3))
+    
+    plt.fill_between(times, data[:,0], data[:,1], color = '#619196') 
+    plt.xlim(times[0], times[-1])
+    plt.xlabel('Time (s)')
+    plt.ylabel('Amplitude')
+    
+    return f
 
 #%%
 
@@ -130,15 +120,23 @@ main_title = tk.Label(root, text = "ReamPyr" ,
                       font = ('Arial', 54, 'bold'),
                       fg = 'white', bg = "#B2D9EA",
                       highlightthickness = 0)
-main_title.grid(row = 1, column = 0)
-
-# Add inputs
-
-
+main_title.pack(side = tk.TOP)
 
 # Add data visualisation
 
+fig = audio_plotter()
+canvas = FigureCanvasTkAgg(fig, master = root)
+canvas.draw()
+canvas.get_tk_widget().pack(side = tk.RIGHT, fill = tk.BOTH, expand = True)
 
+# Exit button
+
+def _quit():
+    root.quit()
+    root.destroy()
+
+button = tk.Button(master = root, text = "Exit", command = _quit)
+button.pack(side = tk.BOTTOM)
 
 # Run application
 
