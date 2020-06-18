@@ -49,10 +49,6 @@ times_amp = np.arange(len(amp_data))/float(samplerate)
 
 merged_data = np.concatenate((di_data, amp_data), axis = 1)
 
-# Create pandas version for easy plotting
-
-merged_data_pd = merged_data
-
 #%%
 
 #----------------VISUALISATION-------------------
@@ -82,14 +78,18 @@ fig.show()
 
 # Scale data ready for algorithm
 
-scaler = MinMaxScaler(feature_range = (0, 1))
-merged_data = scaler.fit_transform(merged_data)
+shorter_data = np.delete(merged_data,1,1)
+shorter_data = np.delete(shorter_data,2,1)
 
+scaler = MinMaxScaler(feature_range = (0, 1))
+trans_data = scaler.fit_transform(shorter_data)
+
+#%%
 # Split into train and test data
 
-train_size = int(len(merged_data) * 0.80)
-test_size = len(merged_data) - train_size
-train, test = merged_data[0:train_size,:], merged_data[train_size:len(merged_data),:]
+train_size = int(len(trans_data) * 0.80)
+test_size = len(trans_data) - train_size
+train, test = trans_data[0:train_size,:], trans_data[train_size:len(trans_data),:]
 print(len(train), len(test))
 
 # Convert function to convert an array of values into a dataset matrix
@@ -119,19 +119,21 @@ testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 
 model = Sequential()
 model.add(LSTM(15, input_shape = (1, look_back), dropout = 0.5, activation = 'sigmoid'))
-model.add(Dense(2, activation = 'sigmoid'))
+model.add(Dense(1, activation = 'sigmoid'))
 opt = Adam(learning_rate = 0.01)
 model.compile(loss = 'mean_squared_error', optimizer = opt, metrics = ['acc'])
 early_stop = EarlyStopping(monitor = 'loss', patience = 10, verbose = 1) # Stops after no improvement across 10 epochs
-model.fit(trainX, trainY, epochs = 1000, batch_size = 512, verbose = 2, callbacks = [early_stop])
+model.fit(trainX, trainY, epochs = 100, batch_size = 512, verbose = 2, callbacks = [early_stop])
 
 #%%
 # Visualise loss
 
 history = model.fit(trainX, trainY, epochs = 100, batch_size = 512, verbose = 2, callbacks = [early_stop],
                     validation_data = (testX, testY))
-plt.plot(history.history['loss'], label = "Train", color = '#B2D9EA')
-plt.plot(history.history['val_loss'], label = "Validation", color= '#F4DCD6')
+
+#%%
+plt.plot(history.history['loss'], label = "Train", color = '#57DBD8')
+plt.plot(history.history['val_loss'], label = "Validation", color= '#F84791')
 plt.title('Model train vs validation loss')
 plt.ylabel('Loss')
 plt.xlabel('Epoch')
