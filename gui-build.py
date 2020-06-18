@@ -17,10 +17,11 @@ from tkinter.ttk import *
 import numpy as np
 import pandas as pd
 import os
+import math
 from scipy.io import wavfile
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import seaborn as sns; sns.set()
+import seaborn as sns; sns.set(style = "darkgrid")
 
 from subprocess import check_output
 from keras.layers.core import Dense, Activation, Dropout
@@ -36,41 +37,51 @@ from sklearn.metrics import mean_squared_error
 
 #----------------READ IN DATA--------------------
 
-# Read in raw DI and amp file and plot it
+# Read in raw DI and amp file
 
-def audio_plotter():
-    samplerate, data = wavfile.read("/Users/trenthenderson/Documents/Python/reampyr/data/Dry Guitar.wav")
-    times = np.arange(len(data))/float(samplerate)
-    
-    # Plot it
-    
-    f, ax = plt.subplots(figsize=(7, 3))
-    
-    plt.fill_between(times, data[:,0], data[:,1], color = '#619196') 
-    plt.xlim(times[0], times[-1])
-    plt.xlabel('Time (s)')
-    plt.ylabel('Amplitude')
-    
-    return f
+samplerate, di_data = wavfile.read("/Users/trenthenderson/Documents/Python/reampyr/data/ScathingRhythmDI.wav")
+times_di = np.arange(len(di_data))/float(samplerate)
+
+samplerate, amp_data = wavfile.read("/Users/trenthenderson/Documents/Python/reampyr/data/ScathingRhythmAmp.wav")
+times_amp = np.arange(len(amp_data))/float(samplerate)
+
+# Merge together
+
+merged_data = np.concatenate((di_data, amp_data), axis = 1)
+
+# Create pandas version for easy plotting
+
+merged_data_pd = merged_data
 
 #%%
 
-#----------------WRITE ML ALGORITHMS----------------
+#----------------VISUALISATION-------------------
 
-#--------------
-# LSTM CNN
-#--------------
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex = True, figsize = (11,7))
+
+ax1.fill_between(times_di, di_data[:,0], di_data[:,1], color = '#B2D9EA')
+ax1.set_ylabel('Amplitude')
+
+ax2.fill_between(times_amp, amp_data[:,0], amp_data[:,1], color = '#F4DCD6')
+ax2.set_ylabel('Amplitude')
+ax2.set_xlabel('Time (s)')
+ax2.set_xlim(times_di[0], times_di[-1])
+ax2.set_ylim(-40000,40000)
+
+#%%
+
+#----------------WRITE LSTM ML ALGORITHMS-----------
 
 # Scale data ready for algorithm
 
-scaler = MinMaxScaler(feature_range=(0, 1))
-DATA = scaler.fit_transform(DATA)
+scaler = MinMaxScaler(feature_range = (0, 1))
+merged_data = scaler.fit_transform(merged_data)
 
 # Split into train and test data
 
-train_size = int(len(DATA) * 0.80)
-test_size = len(DATA) - train_size
-train, test = DATA[0:train_size,:], DATA[train_size:len(DATA),:]
+train_size = int(len(merged_data) * 0.80)
+test_size = len(merged_data) - train_size
+train, test = merged_data[0:train_size,:], merged_data[train_size:len(merged_data),:]
 print(len(train), len(test))
 
 # Convert function to convert an array of values into a dataset matrix
@@ -84,8 +95,7 @@ def create_dataset(dataset, look_back=1):
     return np.array(dataX), np.array(dataY)
 
 # Use function to reshape data into X=t and Y=t+1 - this frames 
-# data as a SUPERVISED LEARNING PROBLEM
-# with inputs and outputs side-by-side
+# data as a SUPERVISED LEARNING PROBLEM with inputs and outputs side-by-side
 
 look_back = 1
 trainX, trainY = create_dataset(train, look_back)
@@ -94,11 +104,58 @@ testX, testY = create_dataset(test, look_back)
 trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
 testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 
-#--------------
-# FFT
-#--------------
+#%%
+#-----------------MODEL FITTING---------------------
 
+# Create and fit the LSTM network
 
+model = Sequential()
+model.add(LSTM(15, input_shape = (1, look_back), dropout = 0.5, activation = 'sigmoid'))
+model.add(Dense(2, activation = 'sigmoid'))
+opt = Adam(learning_rate = 0.01)
+model.compile(loss = 'mean_squared_error', optimizer = opt, metrics = ['acc'])
+early_stop = EarlyStopping(monitor = 'loss', patience = 10, verbose = 1) # Stops after no improvement across 10 epochs
+model.fit(trainX, trainY, epochs = 1000, batch_size = 512, verbose = 2, callbacks = [early_stop])
+
+#%%
+# Visualise loss
+
+history = model.fit(trainX, trainY, epochs = 100, batch_size = 512, verbose = 2, callbacks = [early_stop],
+                    validation_data = (testX, testY))
+plt.plot(history.history['loss'], label = "Train", color = '#B2D9EA')
+plt.plot(history.history['val_loss'], label = "Validation", color= '#F4DCD6')
+plt.title('Model train vs validation loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(loc = 'upper right')
+plt.show()
+
+#%%
+trainPredict = model.predict(trainX)
+testPredict = model.predict(testX)
+
+#%%
+# Reshape Y data
+
+train_shape = trainY.shape
+trainYr = trainY.reshape((train_shape[0]))
+
+test_shape = testY.shape
+testYr = testY.reshape((test_shape[0]))
+
+# Invert predictions
+
+trainPredict = scaler.inverse_transform(trainPredict)
+trainYr = scaler.inverse_transform([trainYr])
+testPredict = scaler.inverse_transform(testPredict)
+testYr = scaler.inverse_transform([testYr])
+
+# Calculate root mean squared error
+
+trainScore = math.sqrt(mean_squared_error(trainYr[0], trainPredict[:,0]))
+print('Train Score: %.2f RMSE' % (trainScore))
+testScore = math.sqrt(mean_squared_error(testYr[0], testPredict[:,0]))
+print('Test Score: %.2f RMSE' % (testScore))
 
 #%%
 
@@ -120,14 +177,15 @@ main_title = tk.Label(root, text = "ReamPyr" ,
                       font = ('Arial', 54, 'bold'),
                       fg = 'white', bg = "#B2D9EA",
                       highlightthickness = 0)
-main_title.pack(side = tk.TOP)
+main_title.pack(side = tk.TOP, fill = tk.X, expand = False)
 
 # Add data visualisation
 
-fig = audio_plotter()
-canvas = FigureCanvasTkAgg(fig, master = root)
-canvas.draw()
-canvas.get_tk_widget().pack(side = tk.RIGHT, fill = tk.BOTH, expand = True)
+#fig = audio_plotter()
+#canvas = FigureCanvasTkAgg(fig, master = root)
+#canvas.get_tk_widget().configure(background = '#B2D9EA', highlightcolor = '#B2D9EA')
+#canvas.draw()
+#canvas.get_tk_widget().pack(side = tk.RIGHT, expand = False)
 
 # Exit button
 
@@ -136,7 +194,7 @@ def _quit():
     root.destroy()
 
 button = tk.Button(master = root, text = "Exit", command = _quit)
-button.pack(side = tk.BOTTOM)
+button.pack(side = tk.BOTTOM, expand = False)
 
 # Run application
 
