@@ -57,16 +57,24 @@ merged_data_pd = merged_data
 
 #----------------VISUALISATION-------------------
 
+# Plot every 100th point to avoid matplotlib overflow errors
+
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex = True, figsize = (11,7))
 
-ax1.fill_between(times_di, di_data[:,0], di_data[:,1], color = '#B2D9EA')
+ax1.fill_between(times_di[::100], di_data[::100,0], di_data[::100,1], color = '#57DBD8')
 ax1.set_ylabel('Amplitude')
+ax2.set_ylim(-40000,40000)
+ax1.set_title('Raw Guitar DI')
 
-ax2.fill_between(times_amp, amp_data[:,0], amp_data[:,1], color = '#F4DCD6')
+ax2.fill_between(times_amp[::100], amp_data[::100,0], amp_data[::100,1], color = '#F84791')
+ax2.set_title('Guitar Amplifier Head')
 ax2.set_ylabel('Amplitude')
 ax2.set_xlabel('Time (s)')
 ax2.set_xlim(times_di[0], times_di[-1])
 ax2.set_ylim(-40000,40000)
+
+fig.savefig('/Users/trenthenderson/Documents/Python/reampyr/output/raw_signal.png', dpi = 1000)
+fig.show()
 
 #%%
 
