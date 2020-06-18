@@ -34,7 +34,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 
 #%%
-
 #----------------READ IN DATA--------------------
 
 # Read in raw DI and amp file
@@ -50,7 +49,6 @@ times_amp = np.arange(len(amp_data))/float(samplerate)
 merged_data = np.concatenate((di_data, amp_data), axis = 1)
 
 #%%
-
 #----------------VISUALISATION-------------------
 
 # Plot every 100th point to avoid matplotlib overflow errors
@@ -73,7 +71,6 @@ fig.savefig('/Users/trenthenderson/Documents/Python/reampyr/output/raw_signal.pn
 fig.show()
 
 #%%
-
 #----------------WRITE LSTM ML ALGORITHMS-----------
 
 # Scale data ready for algorithm
@@ -115,20 +112,50 @@ testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 #%%
 #-----------------MODEL FITTING---------------------
 
-# Create and fit the LSTM network
+# Instantiate network
 
 model = Sequential()
-model.add(LSTM(15, input_shape = (1, look_back), dropout = 0.5, activation = 'sigmoid'))
-model.add(Dense(1, activation = 'sigmoid'))
-opt = Adam(learning_rate = 0.01)
-model.compile(loss = 'mean_squared_error', optimizer = opt, metrics = ['acc'])
-early_stop = EarlyStopping(monitor = 'loss', patience = 10, verbose = 1) # Stops after no improvement across 10 epochs
-model.fit(trainX, trainY, epochs = 100, batch_size = 512, verbose = 2, callbacks = [early_stop])
+
+# Layer 1
+
+model.add(LSTM(units = 32, input_shape = (1, look_back), activation = 'relu', 
+               return_sequences = True))
+model.add(Dropout(0.2))
+
+# Layer 2
+
+model.add(LSTM(units = 32, return_sequences = True, activation = 'relu'))
+model.add(Dropout(0.2))
+
+# Layer 3
+
+model.add(LSTM(units = 32, return_sequences = True, activation = 'relu'))
+model.add(Dropout(0.2))
+
+# Layer 4
+
+model.add(LSTM(units = 32, return_sequences = True, activation = 'relu'))
+model.add(Dropout(0.2))
+
+# Layer 5
+
+model.add(LSTM(units = 32, return_sequences = True, activation = 'relu'))
+model.add(Dropout(0.2))
+
+# Final model components
+
+model.add(Dense(units = 1, activation = 'relu')) # Predict single output value
+model.compile(optimizer = 'adam', loss = 'mse', metrics = ['acc'])
+
+#%%
+# Train the model
+
+model.fit(trainX, trainY, epochs = 1000, batch_size = 512, verbose = 2)
 
 #%%
 # Visualise loss
 
-history = model.fit(trainX, trainY, epochs = 100, batch_size = 512, verbose = 2, callbacks = [early_stop],
+history = model.fit(trainX, trainY, epochs = 1000, batch_size = 512, verbose = 2,
                     validation_data = (testX, testY))
 
 #%%
@@ -167,45 +194,3 @@ print('Train Score: %.2f RMSE' % (trainScore))
 testScore = math.sqrt(mean_squared_error(testYr[0], testPredict[:,0]))
 print('Test Score: %.2f RMSE' % (testScore))
 
-#%%
-
-#----------------BUILD BASIC GUI LAYOUT--------------
-
-# Root window
-
-root = tk.Tk()
-
-# Set window parameters
-
-root.title('ReamPyr - Machine Learning Software (v0.1)')
-root.configure(background = "#B2D9EA")
-root.geometry("900x500")
-
-# Add application title
-
-main_title = tk.Label(root, text = "ReamPyr" ,
-                      font = ('Arial', 54, 'bold'),
-                      fg = 'white', bg = "#B2D9EA",
-                      highlightthickness = 0)
-main_title.pack(side = tk.TOP, fill = tk.X, expand = False)
-
-# Add data visualisation
-
-#fig = audio_plotter()
-#canvas = FigureCanvasTkAgg(fig, master = root)
-#canvas.get_tk_widget().configure(background = '#B2D9EA', highlightcolor = '#B2D9EA')
-#canvas.draw()
-#canvas.get_tk_widget().pack(side = tk.RIGHT, expand = False)
-
-# Exit button
-
-def _quit():
-    root.quit()
-    root.destroy()
-
-button = tk.Button(master = root, text = "Exit", command = _quit)
-button.pack(side = tk.BOTTOM, expand = False)
-
-# Run application
-
-root.mainloop()
